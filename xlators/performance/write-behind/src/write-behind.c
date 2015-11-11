@@ -667,9 +667,13 @@ out:
         return;
 }
 
+<<<<<<< HEAD
 /**
  * 标记req为已经下发
  **/
+=======
+
+>>>>>>> origin/master
 void
 __wb_fulfill_request (wb_request_t *req)
 {
@@ -1040,9 +1044,13 @@ out:
         return ret;
 }
 
+<<<<<<< HEAD
 /**
  * 按照一定的逻辑合并IO请求，这里操作的列表是todo链表。
  **/
+=======
+
+>>>>>>> origin/master
 void
 __wb_preprocess_winds (wb_inode_t *wb_inode)
 {
@@ -1119,7 +1127,11 @@ __wb_preprocess_winds (wb_inode_t *wb_inode)
 		/* collapsed request is as good as wound
 		   (from its p.o.v)
 		*/
+<<<<<<< HEAD
 		list_del_init (&req->todo);/* remove the req from "todo" list */
+=======
+		list_del_init (&req->todo);
+>>>>>>> origin/master
 		__wb_fulfill_request (req);
 
                /* Only the last @holder in queue which
