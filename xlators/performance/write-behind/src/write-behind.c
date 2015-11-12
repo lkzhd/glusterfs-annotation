@@ -667,13 +667,9 @@ out:
         return;
 }
 
-<<<<<<< HEAD
 /**
  * 标记req为已经下发
  **/
-=======
-
->>>>>>> origin/master
 void
 __wb_fulfill_request (wb_request_t *req)
 {
