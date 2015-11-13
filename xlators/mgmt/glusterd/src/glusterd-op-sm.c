@@ -192,7 +192,7 @@ glusterd_generate_txn_id (dict_t *dict, uuid_t **txn_id)
         *txn_id = GF_CALLOC (1, sizeof(uuid_t), gf_common_mt_uuid_t);
         if (!*txn_id)
                 goto out;
-
+		/* 不同版本生成transaction-id的方式不同 */
         if (priv->op_version < GD_OP_VERSION_3_6_0)
                 gf_uuid_copy (**txn_id, priv->global_txn_id);
         else
@@ -3399,6 +3399,9 @@ glusterd_op_ac_send_lock (glusterd_op_sm_event_t *event, void *ctx)
 
                 if (!peerinfo->connected || !peerinfo->mgmt)
                         continue;
+				/*这里可能是用于同步的卷，也就是master-slave功能使用的。geo-repliacation功能可以
+				跨集群进行。
+				*/
                 if ((peerinfo->state.state != GD_FRIEND_STATE_BEFRIENDED) &&
                     (glusterd_op_get_op() != GD_OP_SYNC_VOLUME))
                         continue;
@@ -3465,6 +3468,8 @@ glusterd_op_ac_send_lock (glusterd_op_sm_event_t *event, void *ctx)
 
         opinfo.pending_count = pending_count;
         if (!opinfo.pending_count)
+			/*对所有peer的加锁均没有成功。所以需要这里主动注入ALL_ACC事件。
+			*/
                 ret = glusterd_op_sm_inject_all_acc (&event->txn_id);
 
 out:
@@ -4181,7 +4186,7 @@ out:
 
         if (dict)
                 dict_unref (dict);
-        if (ret) {
+        if (ret) {/* 最后一次调用proc->fn时失败 */
                 glusterd_op_sm_inject_event (GD_OP_EVENT_RCVD_RJT,
                                              &event->txn_id, NULL);
                 opinfo.op_ret = ret;
@@ -4191,7 +4196,7 @@ out:
                 "'Volume %s' to %d peers", gd_op_list[op],
                 opinfo.pending_count);
 
-        if (!opinfo.pending_count)
+        if (!opinfo.pending_count)/* 所有调用proc->fn都失败了 */
                 ret = glusterd_op_sm_inject_all_acc (&event->txn_id);
 
         gf_msg_debug (this->name, 0, "Returning with %d", ret);
@@ -7348,7 +7353,7 @@ glusterd_op_sm ()
 
         this = THIS;
         GF_ASSERT (this);
-
+		/* attempt to get lock */
         ret = synclock_trylock (&gd_op_sm_lock);
         if (ret) {
                 lock_err = errno;
@@ -7387,11 +7392,13 @@ glusterd_op_sm ()
                                 continue;
                         } else
                                 opinfo = txn_op_info;
-
+						/*以opinfo.state.state为索引，获取相应的type--handler数组
+						*/
                         state = glusterd_op_state_table[opinfo.state.state];
 
                         GF_ASSERT (state);
-
+						/*根据type获取相应的handler
+						*/
                         handler = state[event_type].handler;
                         GF_ASSERT (handler);
 

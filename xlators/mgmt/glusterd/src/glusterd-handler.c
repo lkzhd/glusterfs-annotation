@@ -623,7 +623,9 @@ glusterd_add_volume_detail_to_dict (glusterd_volinfo_t *volinfo,
 out:
         return ret;
 }
-
+/*
+transaction begin,initialize status machine(sm) and event¡£ 
+*/
 int32_t
 glusterd_op_txn_begin (rpcsvc_request_t *req, glusterd_op_t op, void *ctx,
                        char *err_str, size_t err_len)
@@ -5130,7 +5132,9 @@ glusterd_null (rpcsvc_request_t *req)
 
         return 0;
 }
-
+/*
+handle the command from glusterd running on other peer belong to one cluster
+*/
 rpcsvc_actor_t gd_svc_mgmt_actors[GLUSTERD_MGMT_MAXVALUE] = {
         [GLUSTERD_MGMT_NULL]           = { "NULL",           GLUSTERD_MGMT_NULL,           glusterd_null,                  NULL, 0, DRC_NA},
         [GLUSTERD_MGMT_CLUSTER_LOCK]   = { "CLUSTER_LOCK",   GLUSTERD_MGMT_CLUSTER_LOCK,   glusterd_handle_cluster_lock,   NULL, 0, DRC_NA},
@@ -5155,7 +5159,9 @@ rpcsvc_actor_t gd_svc_peer_actors[GLUSTERD_FRIEND_MAXVALUE] = {
         [GLUSTERD_FRIEND_REMOVE]  = { "FRIEND_REMOVE", GLUSTERD_FRIEND_REMOVE, glusterd_handle_incoming_unfriend_req, NULL, 0, DRC_NA},
         [GLUSTERD_FRIEND_UPDATE]  = { "FRIEND_UPDATE", GLUSTERD_FRIEND_UPDATE, glusterd_handle_friend_update,         NULL, 0, DRC_NA},
 };
-
+/*
+handle the command from glusterd running on other peer belong to one cluster
+*/
 struct rpcsvc_program gd_svc_peer_prog = {
         .progname  = "GlusterD svc peer",
         .prognum   = GD_FRIEND_PROGRAM,
@@ -5208,7 +5214,7 @@ rpcsvc_actor_t gd_svc_cli_actors[GLUSTER_CLI_MAXVALUE] = {
         [GLUSTER_CLI_GET_VOL_OPT]        = {"GET_VOL_OPT",        GLUSTER_CLI_GET_VOL_OPT,      glusterd_handle_get_vol_opt,           NULL, 0, DRC_NA},
         [GLUSTER_CLI_BITROT]             = {"BITROT",             GLUSTER_CLI_BITROT,           glusterd_handle_bitrot,                NULL, 0, DRC_NA},
 };
-
+/* handle the command for the gluster (launch from localhost) */
 struct rpcsvc_program gd_svc_cli_prog = {
         .progname  = "GlusterD svc cli",
         .prognum   = GLUSTER_CLI_PROGRAM,

@@ -151,9 +151,9 @@ glusterd_lock (uuid_t   uuid)
 
         GF_ASSERT (uuid);
 
-        glusterd_get_lock_owner (&owner);
+        glusterd_get_lock_owner (&owner);/* 当前谁持有锁 */
 
-        if (!gf_uuid_is_null (owner)) {
+        if (!gf_uuid_is_null (owner)) {/* 确实其他transaction占有锁，所以我们加锁会失败 */
                 gf_msg (this->name, GF_LOG_ERROR, 0,
                         GD_MSG_GLUSTERD_LOCK_FAIL, "Unable to get lock"
                         " for uuid: %s, lock held by: %s",
@@ -161,7 +161,7 @@ glusterd_lock (uuid_t   uuid)
                         uuid_utoa_r (owner, owner_str));
                 goto out;
         }
-
+		/* 没有其他transaction持有锁，我们就占有锁 */
         ret = glusterd_set_lock_owner (uuid);
 
         if (!ret) {
