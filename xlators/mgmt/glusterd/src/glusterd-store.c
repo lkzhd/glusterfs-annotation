@@ -2205,7 +2205,7 @@ glusterd_store_retrieve_snapd (glusterd_volinfo_t *volinfo)
 out:
         return ret;
 }
-
+/* rebuild volinfo->bricks */
 int32_t
 glusterd_store_retrieve_bricks (glusterd_volinfo_t *volinfo)
 {
@@ -2499,7 +2499,7 @@ out:
         return ret;
 }
 
-
+/* rebuild voinfo */
 int
 glusterd_store_update_volinfo (glusterd_volinfo_t *volinfo)
 {
@@ -2809,7 +2809,7 @@ glusterd_store_retrieve_volume (char *volname, glusterd_snap_t *snap)
         volinfo->snapshot = snap;
         if (snap)
                 volinfo->is_snap_volume = _gf_true;
-
+		/* rebuild voinfo */
         ret = glusterd_store_update_volinfo (volinfo);
         if (ret) {
                 gf_msg (this->name, GF_LOG_ERROR, 0,
@@ -2817,11 +2817,11 @@ glusterd_store_retrieve_volume (char *volname, glusterd_snap_t *snap)
                         "for %s volume", volname);
                 goto out;
         }
-
+		/* rebuild volinfo->bricks */
         ret = glusterd_store_retrieve_bricks (volinfo);
         if (ret)
                 goto out;
-
+		/* rebuild volinfo->snapd */
         ret = glusterd_store_retrieve_snapd (volinfo);
         if (ret)
                 goto out;
@@ -2848,10 +2848,12 @@ glusterd_store_retrieve_volume (char *volname, glusterd_snap_t *snap)
 
 
         if (!snap) {
+				/* not a snap_vol,add volinfo to priv->volumes, so we can find it from priv */
                 glusterd_list_add_order (&volinfo->vol_list, &priv->volumes,
                                          glusterd_compare_volume_name);
 
         } else {
+        		/* it's a snap_vol, so find it's parent_vol by parent_volname,then add it's to vol->snapvol_list */
                 ret = glusterd_volinfo_find (volinfo->parent_volname,
                                              &origin_volinfo);
                 if (ret) {
@@ -3002,12 +3004,14 @@ glusterd_store_retrieve_volumes (xlator_t  *this, glusterd_snap_t *snap)
         }
 
         GF_FOR_EACH_ENTRY_IN_DIR (entry, dir);
-
+		/*
+		遍历workdir/vols目录下的所有目录，也就是各个卷配置目录，读取相应信息，重建volinfo
+		*/
         while (entry) {
                 if (snap && ((!strcmp (entry->d_name, "geo-replication")) ||
                              (!strcmp (entry->d_name, "info"))))
                         goto next;
-
+				/* 重建volinfo */
                 volinfo = glusterd_store_retrieve_volume (entry->d_name, snap);
                 if (!volinfo) {
                         gf_msg (this->name, GF_LOG_ERROR, 0,
@@ -4258,7 +4262,9 @@ out:
         gf_msg_trace (this->name, 0, "Returning with %d", ret);
         return ret;
 }
-
+/*
+恢复上次的一些重要信息，这个接口很重要，重建了后续操作所需要的大部分信息。
+*/
 int32_t
 glusterd_restore ()
 {
@@ -4266,11 +4272,11 @@ glusterd_restore ()
         xlator_t        *this = NULL;
 
         this = THIS;
-
+		/* 恢复卷相关信息 */
         ret = glusterd_store_retrieve_volumes (this, NULL);
         if (ret)
                 goto out;
-
+		/* 恢复peer相关信息 */
         ret = glusterd_store_retrieve_peers (this);
         if (ret)
                 goto out;
@@ -4283,10 +4289,11 @@ glusterd_restore ()
            retrieving the peers, resolving bricks will fail. So
            do retrieving of snapshots after retrieving peers.
         */
+        /* 恢复快照相关信息 */
         ret = glusterd_store_retrieve_snaps (this);
         if (ret)
                 goto out;
-
+		/* 恢复brick相关信息 */
         ret = glusterd_resolve_all_bricks (this);
         if (ret)
                 goto out;

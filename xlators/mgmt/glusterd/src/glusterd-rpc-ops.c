@@ -2213,7 +2213,9 @@ glusterd_brick_op (call_frame_t *frame, xlator_t *this,
         ret = dict_get_bin (req_ctx->dict, "transaction_id", (void **)&txn_id);
         gf_msg_debug (this->name, 0, "transaction ID = %s",
                 uuid_utoa (*txn_id));
-
+		/*
+		Ñ¡Ôñbricks
+		*/
         ret = glusterd_op_bricks_select (req_ctx->op, req_ctx->dict, &op_errstr,
                                          &opinfo.pending_bricks, NULL);
 
@@ -2225,7 +2227,8 @@ glusterd_brick_op (call_frame_t *frame, xlator_t *this,
                 opinfo.op_errstr = op_errstr;
                 goto out;
         }
-
+		/*build req payload basis of pending_node->type.
+		*/
         cds_list_for_each_entry (pending_node, &opinfo.pending_bricks, list) {
                 dummy_frame = create_frame (this, this->ctx->pool);
                 if (!dummy_frame)
@@ -2303,7 +2306,7 @@ glusterd_brick_op (call_frame_t *frame, xlator_t *this,
                 glusterd_pending_node_put_rpc (pending_node);
         }
 
-        gf_msg_trace (this->name, 0, "Sent brick op req for operation "
+        gf_msg_error (this->name, 0, "Sent brick op req for operation "
                 "'Volume %s' to %d bricks", gd_op_list[req_ctx->op],
                 pending_bricks);
         opinfo.brick_pending_count = pending_bricks;
