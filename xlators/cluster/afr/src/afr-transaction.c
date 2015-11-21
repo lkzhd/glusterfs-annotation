@@ -487,7 +487,8 @@ afr_changelog_call_count (afr_transaction_type type,
         return call_count;
 }
 
-
+/*判断是否有返回错误的子卷
+*/
 gf_boolean_t
 afr_txn_nothing_failed (call_frame_t *frame, xlator_t *this)
 {
@@ -1935,12 +1936,16 @@ afr_transaction_eager_lock_init (afr_local_t *local, xlator_t *this)
         {
                 list_for_each_entry (each, &fdctx->eager_locked,
                                      transaction.eager_locked) {
+                  /*判断是否有重叠的IO，对于重叠IO，因为有竞争的存在，所以我们不能确定最终的数据是否是我们期望的。
+                  	/* 因此不能使用eager-lock
+                       */
                         if (afr_locals_overlap (each, local)) {
                                 local->transaction.eager_lock_on = _gf_false;
                                 goto unlock;
                         }
                 }
-
+				/* 如果可以使用eager-lock，那么我们将这个操作添加到该fdctx中
+				*/
                 local->transaction.eager_lock_on = _gf_true;
                 list_add_tail (&local->transaction.eager_locked,
                                &fdctx->eager_locked);
@@ -1964,7 +1969,7 @@ afr_transaction (call_frame_t *frame, xlator_t *this, afr_transaction_type type)
         local->transaction.resume = afr_transaction_resume;
         local->transaction.type   = type;
 
-        ret = afr_transaction_local_init (local, this);
+        ret = afr_transaction_local_init (local, this);//local初始化
         if (ret < 0)
             goto out;
 
@@ -1987,7 +1992,7 @@ afr_transaction (call_frame_t *frame, xlator_t *this, afr_transaction_type type)
                 if (fd == NULL)
                         fd = fd_lookup_anonymous (local->loc.inode);
 
-                if (fd) {
+                if (fd) {//Looks like to active the delay operations
                         afr_delayed_changelog_wake_up (this, fd);
                         fd_unref (fd);
                 }

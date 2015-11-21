@@ -3382,7 +3382,9 @@ out:
         gf_msg_debug ("glusterd", 0, "Returning %d", ret);
         return ret;
 }
-
+/*
+创建用于各个peer间通信的RPC.
+*/
 int
 glusterd_friend_rpc_create (xlator_t *this, glusterd_peerinfo_t *peerinfo,
                             glusterd_peerctx_args_t *args)

@@ -343,8 +343,9 @@ afr_selfheal_data_do (call_frame_t *frame, xlator_t *this, fd_t *fd,
 	call_frame_t *iter_frame = NULL;
 
 	priv = this->private;
-
-        type = afr_data_self_heal_type_get (priv, healed_sinks, source,
+	/* 确定修复逻辑类型，具体的逻辑参见options中的说明。full or diff
+	*/
+    type = afr_data_self_heal_type_get (priv, healed_sinks, source,
                                             replies);
 
 	iter_frame = afr_copy_frame (frame);

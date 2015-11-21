@@ -121,6 +121,7 @@ out:
  *                                If EVENT_GEN is < priv->event_generation,
  *                                or is 0, it means afr_inode_refresh() needs
  *                                to be called to recalculate the bitmaps.
+ *							即用于标记是否需要更新afr-inode，通常子卷掉线、上线需要更新inode
  */
 
 int
@@ -4139,10 +4140,11 @@ afr_transaction_local_init (afr_local_t *local, xlator_t *this)
         ret = -ENOMEM;
         child_up_count = AFR_COUNT (local->child_up, priv->child_count);
         if (priv->optimistic_change_log && child_up_count == priv->child_count)
-                local->optimistic_change_log = 1;
+                local->optimistic_change_log = 1;//标记是否禁用entry和metadata的pre-op。
 
-	local->pre_op_compat = priv->pre_op_compat;
-
+	local->pre_op_compat = priv->pre_op_compat;//pre-op是否与op一起下发
+		/*eager lock，标记对单个文件描述符，是否能够产生聚集写的效果，这样就由最后的write op完成post-op阶段
+		*/
         local->transaction.eager_lock =
                 GF_CALLOC (sizeof (*local->transaction.eager_lock),
                            priv->child_count,
@@ -4184,7 +4186,7 @@ afr_transaction_local_init (afr_local_t *local, xlator_t *this)
                 goto out;
 
         local->pending = afr_matrix_create (priv->child_count,
-                                            AFR_NUM_CHANGE_LOGS);
+                                            AFR_NUM_CHANGE_LOGS);//未决操作记录，也就是changelog
         if (!local->pending)
                 goto out;
 

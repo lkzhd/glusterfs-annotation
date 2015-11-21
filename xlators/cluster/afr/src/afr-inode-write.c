@@ -248,7 +248,7 @@ afr_writev_handle_short_writes (call_frame_t *frame, xlator_t *this)
                         afr_transaction_fop_failed (frame, this, i);
         }
 }
-
+//write_op_cbk,
 int
 afr_writev_wind_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
                      int32_t op_ret, int32_t op_errno, struct iatt *prebuf,
@@ -267,24 +267,25 @@ afr_writev_wind_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
         LOCK (&frame->lock);
         {
                 __afr_inode_write_fill (frame, this, child_index, op_ret,
-					op_errno, prebuf, postbuf, NULL, xdata);
-		if (op_ret == -1 || !xdata)
-			goto unlock;
+							op_errno, prebuf, postbuf, NULL, xdata);
 
-		write_is_append = 0;
-		ret = dict_get_uint32 (xdata, GLUSTERFS_WRITE_IS_APPEND,
-				       &write_is_append);
-		if (ret || !write_is_append)
-			local->append_write = _gf_false;
+				if (op_ret == -1 || !xdata)
+					goto unlock;
 
-		ret = dict_get_uint32 (xdata, GLUSTERFS_OPEN_FD_COUNT,
-				       &open_fd_count);
-		if (ret == -1)
-			goto unlock;
-		if ((open_fd_count > local->open_fd_count)) {
-			local->open_fd_count = open_fd_count;
-			local->update_open_fd_count = _gf_true;
-		}
+				write_is_append = 0;
+				ret = dict_get_uint32 (xdata, GLUSTERFS_WRITE_IS_APPEND,
+						       &write_is_append);
+				if (ret || !write_is_append)
+					local->append_write = _gf_false;
+
+				ret = dict_get_uint32 (xdata, GLUSTERFS_OPEN_FD_COUNT,
+						       &open_fd_count);
+				if (ret == -1)
+					goto unlock;
+				if ((open_fd_count > local->open_fd_count)) {
+					local->open_fd_count = open_fd_count;
+					local->update_open_fd_count = _gf_true;
+				}
         }
 unlock:
         UNLOCK (&frame->lock);
@@ -292,17 +293,22 @@ unlock:
         call_count = afr_frame_return (frame);
 
         if (call_count == 0) {
-		if (!local->stable_write && !local->append_write)
+		if (!local->stable_write && !local->append_write) {
 			/* An appended write removes the necessity to
 			   fsync() the file. This is because self-heal
 			   has the logic to check for larger file when
 			   the xattrs are not reliably pointing at
 			   a stale file.
+			   既不是追加写，也不是可靠的写，则需要一个公证人来表明最终的写
+			   是否成功。
 			*/
 			afr_fd_report_unstable_write (this, local->fd);
-
+		}
+		/*综合各个子卷的返回结果，根据相应的逻辑选择一个最优结果用于返回给上层应用。
+		*/
 		__afr_inode_write_finalize (frame, this);
-
+				/*将最优结果之外的子卷标记为failed，用于afr内部处理。
+				*/
                 afr_writev_handle_short_writes (frame, this);
 
                 if (local->update_open_fd_count)
@@ -312,7 +318,7 @@ unlock:
                         //Don't unwind until post-op is complete
                         local->transaction.resume (frame, this);
                 } else {
-                /*
+            /*
                  * Generally inode-write fops do transaction.unwind then
                  * transaction.resume, but writev needs to make sure that
                  * delayed post-op frame is placed in fdctx before unwind
@@ -321,7 +327,7 @@ unlock:
                  * writev placing its delayed post-op frame in fdctx.
                  * This helps flush make sure all the delayed post-ops are
                  * completed.
-                 */
+              	*/
 
                         fop_frame = afr_transaction_detach_fop_frame (frame);
                         afr_writev_copy_outvars (frame, fop_frame);

@@ -412,7 +412,7 @@ typedef struct _afr_local {
 	  op operations as part of transaction, rather than combining
 	*/
 
-	gf_boolean_t pre_op_compat;
+	gf_boolean_t pre_op_compat;//标记pre-op是否与op一起下发
 
         dict_t  *xattr_req;
 

@@ -1521,8 +1521,9 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
         initialize_inodelk_variables (frame, this);
 
         if (local->fd) {
+				//finodelk
                 fd_ctx = afr_fd_ctx_get (local->fd, this);
-                if (!fd_ctx) {
+                if (!fd_ctx) {//it means failed
                         gf_msg (this->name, GF_LOG_INFO, 0,
                                 AFR_MSG_FD_CTX_GET_FAILED,
                                 "unable to get fd ctx for fd=%p",
@@ -1533,12 +1534,12 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
                         local->op_errno         = EINVAL;
                         int_lock->lock_op_errno = EINVAL;
 
-			afr_unlock (frame, this);
-                        ret = -1;
-                        goto out;
+						afr_unlock (frame, this);
+			            ret = -1;
+			            goto out;
                 }
 
-                call_count = internal_lock_count (frame, this);
+                call_count = internal_lock_count (frame, this);//need lock on all bricks
                 int_lock->lk_call_count = call_count;
                 int_lock->lk_expected_count = call_count;
 
@@ -1557,33 +1558,33 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
                                 continue;
 
                         flock_use = &flock;
-                        if (!local->transaction.eager_lock_on) {
+                        if (!local->transaction.eager_lock_on) {//not use eager-lock ,goto wind,lock range
                                 goto wind;
                         }
 
                         piggyback = 0;
                         local->transaction.eager_lock[i] = 1;
 
-			afr_set_delayed_post_op (frame, this);
+						afr_set_delayed_post_op (frame, this);//Check the option determines whether or not enable eager_lock
 
                         LOCK (&local->fd->lock);
                         {
-                                if (fd_ctx->lock_acquired[i]) {
+                                if (fd_ctx->lock_acquired[i]) {//已经加锁了，增加锁的叠加次数
                                         fd_ctx->lock_piggyback[i]++;
                                         piggyback = 1;
                                 }
                         }
                         UNLOCK (&local->fd->lock);
 
-                        if (piggyback) {
+                        if (piggyback) {//并没有真正去birck加锁，因为已经加锁了，所以直接调用了cbk函数，并指定op_ret为1，用于区分。
                                 /* (op_ret == 1) => indicate piggybacked lock */
                                 afr_nonblocking_inodelk_cbk (frame, (void *) (long) i,
                                                              this, 1, 0, NULL);
                                 if (!--call_count)
                                         break;
-                                continue;
+                                continue;//继续尝试在其他brick上加锁
                         }
-                        flock_use = &full_flock;
+                        flock_use = &full_flock;// use eager-lock,we lock full file
                 wind:
                         AFR_TRACE_INODELK_IN (frame, this,
                                               AFR_INODELK_NB_TRANSACTION,
@@ -1600,7 +1601,8 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
                                 break;
                 }
         } else {
-                call_count = internal_lock_count (frame, this);
+				//inodelk
+				call_count = internal_lock_count (frame, this);
                 int_lock->lk_call_count = call_count;
                 int_lock->lk_expected_count = call_count;
 
