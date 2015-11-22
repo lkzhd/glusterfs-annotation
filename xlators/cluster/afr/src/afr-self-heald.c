@@ -378,8 +378,8 @@ afr_shd_sweep_done (struct subvol_healer *healer)
 	shd = &(((afr_private_t *)healer->this->private)->shd);
 
 	time (&event->end_time);
-	history = memdup (event, sizeof (*event));
-	event->start_time = 0;
+	history = memdup (event, sizeof (*event));//执行内存拷贝
+	event->start_time = 0;//start time为0，意味着这个healer上已经修复完成
 
 	if (!history)
 		return;
@@ -565,11 +565,11 @@ afr_shd_full_healer (void *data)
 		        "starting full sweep on subvol %s",
 		        afr_subvol_name (this, healer->subvol));
 
-		afr_shd_sweep_prepare (healer);
+		afr_shd_sweep_prepare (healer);//用于存放修复信息的结构初始化
 
-		afr_shd_full_sweep (healer, this->itable->root);
+		afr_shd_full_sweep (healer, this->itable->root);//从根目录开始修复
 
-		afr_shd_sweep_done (healer);
+		afr_shd_sweep_done (healer);//修复信息的收集
 
 	        gf_msg (this->name, GF_LOG_INFO, 0, AFR_MSG_SELF_HEAL_INFO,
 		        "finished full sweep on subvol %s",
@@ -1141,7 +1141,7 @@ afr_xl_op (xlator_t *this, dict_t *input, dict_t *output)
 						    "Brick is remote");
 			} else {
 				ret = dict_set_str (output, key,
-						    "Started self-heal");
+						    "Started self-heal");//只修复本地的brick
 				afr_shd_full_healer_spawn (this, i);
 				op_ret = 0;
 			}

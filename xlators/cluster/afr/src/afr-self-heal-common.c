@@ -939,7 +939,10 @@ afr_selfheal_tryentrylk (call_frame_t *frame, xlator_t *this, inode_t *inode,
 	return afr_locked_fill (frame, this, locked_on);
 }
 
-
+/*
+entrylk，在所有的子卷上依次非阻塞加锁，如果有一个子卷加锁失败(因为有其他锁存在导致的)，则将已经成功加锁的子卷解锁。
+换句话说，这个接口保证要么所有子卷都被加锁，要么所有子卷都没有被加锁。
+*/
 int
 afr_selfheal_entrylk (call_frame_t *frame, xlator_t *this, inode_t *inode,
 		      char *dom, const char *name, unsigned char *locked_on)

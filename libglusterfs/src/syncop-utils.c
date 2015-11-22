@@ -67,7 +67,9 @@ out:
                 *fd = dirfd;
         return ret;
 }
-
+/*
+打开指定目录，读取目录项，调用fn函数对目录项进行操作
+*/
 int
 syncop_ftw (xlator_t *subvol, loc_t *loc, int pid, void *data,
             int (*fn) (xlator_t *subvol, gf_dirent_t *entry, loc_t *parent,

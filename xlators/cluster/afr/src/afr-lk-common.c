@@ -94,7 +94,7 @@ get_afr_lock_number ()
 {
         return (++afr_lock_number);
 }
-
+//用于统计的锁增量
 int
 afr_set_lock_number (call_frame_t *frame, xlator_t *this)
 {
@@ -108,7 +108,7 @@ afr_set_lock_number (call_frame_t *frame, xlator_t *this)
 
         return 0;
 }
-
+//设置lock owner，将fd指针的值作为owner
 void
 afr_set_lk_owner (call_frame_t *frame, xlator_t *this, void *lk_owner)
 {
@@ -721,7 +721,7 @@ afr_unlock_inodelk (call_frame_t *frame, xlator_t *this)
                 fd_ctx = afr_fd_ctx_get (local->fd, this);
 
         for (i = 0; i < priv->child_count; i++) {
-                if ((inodelk->locked_nodes[i] & LOCKED_YES) != LOCKED_YES)
+                if ((inodelk->locked_nodes[i] & LOCKED_YES) != LOCKED_YES)//该子卷上并没有成功获取非阻塞锁
                         continue;
 
                 if (local->fd) {
@@ -1028,7 +1028,7 @@ _is_lock_wind_needed (afr_local_t *local, int child_index)
 
         return _gf_true;
 }
-
+//逐个子卷加锁
 int
 afr_lock_blocking (call_frame_t *frame, xlator_t *this, int cookie)
 {
@@ -1516,7 +1516,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
         flock.l_len   = inodelk->flock.l_len;
         flock.l_type  = inodelk->flock.l_type;
 
-        full_flock.l_type = inodelk->flock.l_type;
+        full_flock.l_type = inodelk->flock.l_type;//l_start,l_len均为零，意味着对整个文件加锁
 
         initialize_inodelk_variables (frame, this);
 
@@ -1539,7 +1539,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
 			            goto out;
                 }
 
-                call_count = internal_lock_count (frame, this);//need lock on all bricks
+                call_count = internal_lock_count (frame, this);//need lock on all online bricks
                 int_lock->lk_call_count = call_count;
                 int_lock->lk_expected_count = call_count;
 
@@ -1627,7 +1627,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
 out:
         return ret;
 }
-
+//由于没有在所有的子卷上加锁成功，这里释放在某些子卷上获取的锁。
 int32_t
 afr_unlock (call_frame_t *frame, xlator_t *this)
 {

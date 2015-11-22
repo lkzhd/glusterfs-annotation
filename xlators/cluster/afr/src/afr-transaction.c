@@ -328,7 +328,7 @@ __changelog_enabled (afr_private_t *priv, afr_transaction_type type)
         return ret;
 }
 
-
+//确定是否需要changelog支持，默认都是支持，在option中写死的。
 static int
 __fop_changelog_needed (call_frame_t *frame, xlator_t *this)
 {
@@ -349,7 +349,7 @@ __fop_changelog_needed (call_frame_t *frame, xlator_t *this)
                         op_ret = 1;
                         break;
 
-                case GF_FOP_FLUSH:
+                case GF_FOP_FLUSH://对于flush操作不需要
                         op_ret = 0;
                         break;
 
@@ -872,7 +872,7 @@ afr_changelog_pre_op_inherit (call_frame_t *frame, xlator_t *this)
 
 	LOCK(&fd->lock);
 	{
-		if (!fd_ctx->on_disk[type]) {
+		if (!fd_ctx->on_disk[type]) {//还没有可以继承的pre-op
 			/* nothing to inherit yet */
 			ret = _gf_false;
 			goto unlock;
@@ -899,7 +899,7 @@ unlock:
 	return ret;
 }
 
-
+//更新各个子卷上的pre-op状态
 gf_boolean_t
 afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 {
@@ -931,14 +931,14 @@ afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 
         if (!afr_txn_nothing_failed (frame, this))
 		return _gf_false;
-
+	//获取相关操作在扩展属性中的索引
 	type = afr_index_for_transaction_type (local->transaction.type);
 
 	ret = _gf_false;
 
 	LOCK(&fd->lock);
 	{
-		if (!fd_ctx->on_disk[type]) {
+		if (!fd_ctx->on_disk[type]) {//还没有执行过pre-op操作
 			for (i = 0; i < priv->child_count; i++)
 				fd_ctx->pre_op_done[type][i] =
 					local->transaction.pre_op[i];
@@ -1090,37 +1090,37 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
         int i = 0;
         int ret = 0;
         int call_count = 0;
-	int op_errno = 0;
+		int op_errno = 0;
         afr_local_t *local = NULL;
         afr_internal_lock_t *int_lock = NULL;
         unsigned char       *locked_nodes = NULL;
-	int idx = -1;
-	gf_boolean_t pre_nop = _gf_true;
-	dict_t *xdata_req = NULL;
+		int idx = -1;
+		gf_boolean_t pre_nop = _gf_true;
+		dict_t *xdata_req = NULL;
 
         local = frame->local;
         int_lock = &local->internal_lock;
-	idx = afr_index_for_transaction_type (local->transaction.type);
+		idx = afr_index_for_transaction_type (local->transaction.type);
 
         locked_nodes = afr_locked_nodes_get (local->transaction.type, int_lock);
 
-	for (i = 0; i < priv->child_count; i++) {
-		if (locked_nodes[i]) {
-			local->transaction.pre_op[i] = 1;
-			call_count++;
-		} else {
-                        local->transaction.failed_subvols[i] = 1;
-                }
-	}
+		for (i = 0; i < priv->child_count; i++) {
+			if (locked_nodes[i]) {
+				local->transaction.pre_op[i] = 1;
+				call_count++;
+			} else {
+	                        local->transaction.failed_subvols[i] = 1;
+	        }
+		}
 
         /* This condition should not be met with present code, as
          * transaction.done will be called if locks are not acquired on even a
          * single node.
          */
         if (call_count == 0) {
-		op_errno = ENOTCONN;
-		goto err;
-	}
+			op_errno = ENOTCONN;
+			goto err;
+		}
 
         /* Check if the fop can be performed on at least
          * quorum number of nodes.
@@ -1130,77 +1130,77 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
                 goto err;
         }
 
-	xdata_req = dict_new();
-	if (!xdata_req) {
-		op_errno = ENOMEM;
-		goto err;
-	}
-
-	if (afr_changelog_pre_op_inherit (frame, this))
-		goto next;
-
-        if (call_count < priv->child_count)
-                pre_nop = _gf_false;
-
-        /* Set an all-zero pending changelog so that in the cbk, we can get the
-         * current on-disk values. In a replica 3 volume with arbiter enabled,
-         * these values are needed to arrive at a go/ no-go of the fop phase to
-         * avoid ending up in split-brain.*/
-
-        ret = afr_set_pending_dict (priv, xdata_req, local->pending);
-	if (ret < 0) {
-		op_errno = ENOMEM;
-		goto err;
-	}
-
-	if ((local->transaction.type == AFR_DATA_TRANSACTION ||
-	     !local->optimistic_change_log)) {
-
-		local->dirty[idx] = hton32(1);
-
-		ret = dict_set_static_bin (xdata_req, AFR_DIRTY, local->dirty,
-					   sizeof(int) * AFR_NUM_CHANGE_LOGS);
-		if (ret) {
+		xdata_req = dict_new();
+		if (!xdata_req) {
 			op_errno = ENOMEM;
 			goto err;
 		}
 
-		pre_nop = _gf_false;
-		local->transaction.dirtied = 1;
-	}
+		if (afr_changelog_pre_op_inherit (frame, this))
+			goto next;
 
-	if (pre_nop)
-		goto next;
+	  	if (call_count < priv->child_count)
+	         pre_nop = _gf_false;
 
-	if (!local->pre_op_compat) {
-		dict_copy (xdata_req, local->xdata_req);
-		goto next;
-	}
+	        /* Set an all-zero pending changelog so that in the cbk, we can get the
+	         * current on-disk values. In a replica 3 volume with arbiter enabled,
+	         * these values are needed to arrive at a go/ no-go of the fop phase to
+	         * avoid ending up in split-brain.*/
 
-	afr_changelog_do (frame, this, xdata_req, afr_transaction_perform_fop);
+	    ret = afr_set_pending_dict (priv, xdata_req, local->pending);
+		if (ret < 0) {
+			op_errno = ENOMEM;
+			goto err;
+		}
 
-	if (xdata_req)
-		dict_unref (xdata_req);
+		if ((local->transaction.type == AFR_DATA_TRANSACTION ||
+		     !local->optimistic_change_log)) {
 
-	return 0;
-next:
-	afr_transaction_perform_fop (frame, this);
+			local->dirty[idx] = hton32(1);
 
-	if (xdata_req)
-		dict_unref (xdata_req);
+			ret = dict_set_static_bin (xdata_req, AFR_DIRTY, local->dirty,
+						   sizeof(int) * AFR_NUM_CHANGE_LOGS);
+			if (ret) {
+				op_errno = ENOMEM;
+				goto err;
+			}
 
-        return 0;
-err:
-	local->internal_lock.lock_cbk = local->transaction.done;
-	local->op_ret = -1;
-	local->op_errno = op_errno;
+			pre_nop = _gf_false;
+			local->transaction.dirtied = 1;
+		}
 
-	afr_unlock (frame, this);
+		if (pre_nop)
+			goto next;
 
-	if (xdata_req)
-		dict_unref (xdata_req);
+		if (!local->pre_op_compat) {
+			dict_copy (xdata_req, local->xdata_req);
+			goto next;
+		}
 
-	return 0;
+		afr_changelog_do (frame, this, xdata_req, afr_transaction_perform_fop);
+
+		if (xdata_req)
+			dict_unref (xdata_req);
+
+		return 0;
+	next:
+		afr_transaction_perform_fop (frame, this);
+
+		if (xdata_req)
+			dict_unref (xdata_req);
+
+	        return 0;
+	err:
+		local->internal_lock.lock_cbk = local->transaction.done;
+		local->op_ret = -1;
+		local->op_errno = op_errno;
+
+		afr_unlock (frame, this);
+
+		if (xdata_req)
+			dict_unref (xdata_req);
+
+		return 0;
 }
 
 
@@ -1382,10 +1382,10 @@ afr_lock_rec (call_frame_t *frame, xlator_t *this)
         case AFR_DATA_TRANSACTION:
         case AFR_METADATA_TRANSACTION:
                 afr_set_transaction_flock (local);
-
+				//不管最终是否成功，都会调用这个回调函数，它尝试阻塞的方式获取锁
                 int_lock->lock_cbk = afr_post_nonblocking_inodelk_cbk;
 
-                afr_nonblocking_inodelk (frame, this);
+                afr_nonblocking_inodelk (frame, this);//尝试加非阻塞锁
                 break;
 
         case AFR_ENTRY_RENAME_TRANSACTION:
@@ -1415,7 +1415,7 @@ afr_lock (call_frame_t *frame, xlator_t *this)
 {
         afr_set_lock_number (frame, this);
 
-        return afr_lock_rec (frame, this);
+        return afr_lock_rec (frame, this);//加锁操作
 }
 
 
@@ -1736,7 +1736,7 @@ afr_changelog_post_op_safe (call_frame_t *frame, xlator_t *this)
         return 0;
 }
 
-
+//推迟post-op，意味着满足一些优化条件
 void
 afr_delayed_changelog_post_op (xlator_t *this, call_frame_t *frame, fd_t *fd,
                                call_stub_t *stub)
@@ -1758,9 +1758,9 @@ afr_delayed_changelog_post_op (xlator_t *this, call_frame_t *frame, fd_t *fd,
 
 	pthread_mutex_lock (&fd_ctx->delay_lock);
 	{
-		prev_frame = fd_ctx->delay_frame;
+		prev_frame = fd_ctx->delay_frame;//上一个被延迟的frame
 		fd_ctx->delay_frame = NULL;
-		if (fd_ctx->delay_timer)
+		if (fd_ctx->delay_timer)//如果有，那么取消上一个定时器
 			gf_timer_call_cancel (this->ctx, fd_ctx->delay_timer);
 		fd_ctx->delay_timer = NULL;
 		if (!frame)

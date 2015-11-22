@@ -225,11 +225,11 @@ afr_fd_ctx_need_open (fd_t *fd, xlator_t *this, unsigned char *need_open)
 	{
 		for (i = 0; i < priv->child_count; i++) {
 			if (fd_ctx->opened_on[i] == AFR_FD_NOT_OPENED &&
-			    priv->child_up[i]) {
+			    priv->child_up[i]) {//在线，但是还没有open，则需要open
 				fd_ctx->opened_on[i] = AFR_FD_OPENING;
 				need_open[i] = 1;
 				count++;
-			} else {
+			} else {//其他情况则不需要打开
 				need_open[i] = 0;
 			}
 		}
@@ -255,7 +255,7 @@ afr_fix_open (fd_t *fd, xlator_t *this)
 
         priv  = this->private;
 
-        if (!afr_is_fd_fixable (fd))
+        if (!afr_is_fd_fixable (fd))//确定fd是否已经准备好了
                 goto out;
 
         fd_ctx = afr_fd_ctx_get (fd, this);
@@ -264,7 +264,7 @@ afr_fix_open (fd_t *fd, xlator_t *this)
 
 	need_open = alloca0 (priv->child_count);
 
-	call_count = afr_fd_ctx_need_open (fd, this, need_open);
+	call_count = afr_fd_ctx_need_open (fd, this, need_open);//确定需要在多少个子卷上打开,通常情况下这里是不需要在打开的。
 	if (!call_count)
 		goto out;
 
