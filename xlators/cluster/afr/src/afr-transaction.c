@@ -407,7 +407,7 @@ afr_lock_server_count (afr_private_t *priv, afr_transaction_type type)
 
 /* {{{ pending */
 
-
+//继续执行其他的事务
 int
 afr_changelog_post_op_done (call_frame_t *frame, xlator_t *this)
 {
@@ -1846,7 +1846,7 @@ afr_transaction_resume (call_frame_t *frame, xlator_t *this)
         if (__fop_changelog_needed (frame, this)) {
                 afr_changelog_post_op (frame, this);
         } else {
-		afr_changelog_post_op_done (frame, this);
+				afr_changelog_post_op_done (frame, this);
         }
 
         return 0;
