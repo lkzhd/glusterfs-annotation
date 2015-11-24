@@ -275,13 +275,13 @@ typedef enum {
 } afr_fd_open_status_t;
 
 typedef struct {
-        unsigned int *pre_op_done[AFR_NUM_CHANGE_LOGS];
+        unsigned int *pre_op_done[AFR_NUM_CHANGE_LOGS];//记录各个子卷上的pre-op情况
 	int inherited[AFR_NUM_CHANGE_LOGS];
 	int on_disk[AFR_NUM_CHANGE_LOGS];
         afr_fd_open_status_t *opened_on; /* which subvolumes the fd is open on */
 
         unsigned int *lock_piggyback;
-        unsigned int *lock_acquired;
+        unsigned int *lock_acquired;//标记获得锁的子卷
 
         int flags;
 
@@ -292,6 +292,7 @@ typedef struct {
 
 	/* set if any write on this fd was a non stable write
 	   (i.e, without O_SYNC or O_DSYNC)
+	   当有任何非安全写时，设置为true
 	*/
 	gf_boolean_t      witnessed_unstable_write;
 
@@ -304,7 +305,7 @@ typedef struct {
 
 
 	/* list of frames currently in progress */
-	struct list_head  eager_locked;
+	struct list_head  eager_locked;//当前frame的afr-local-t链表
 
 	/* the subvolume on which the latest sequence of readdirs (starting
 	   at offset 0) has begun. Till the next readdir request with 0 offset
@@ -420,7 +421,7 @@ typedef struct _afr_local {
 
         dict_t  *dict;
 
-        int      optimistic_change_log;
+        int      optimistic_change_log;//对于metadata和entry，这个选项用来标记是否使能dirty标记，对于data无意义
 	gf_boolean_t      delayed_post_op;
 
 	/* Is the current writev() going to perform a stable write?
@@ -634,8 +635,8 @@ typedef struct _afr_local {
         struct {
                 off_t start, len;
 
-                gf_boolean_t    eager_lock_on;
-                int *eager_lock;
+                gf_boolean_t    eager_lock_on;//标记该local是否已经加到fdctx.eager-lock中
+                int *eager_lock;//标记在各个子卷上的加锁状态
 
                 char *basename;
                 char *new_basename;
@@ -651,7 +652,7 @@ typedef struct _afr_local {
 
 		struct list_head  eager_locked;
 
-                unsigned char   *pre_op;
+                unsigned char   *pre_op;//标记将要执行pre-op的子卷
 
                 /* For arbiter configuration only. */
                 dict_t **pre_op_xdata;

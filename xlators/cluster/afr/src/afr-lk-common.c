@@ -1403,7 +1403,7 @@ afr_nonblocking_entrylk (call_frame_t *frame, xlator_t *this)
 out:
         return 0;
 }
-
+//在各个子卷上加锁的回调函数
 int32_t
 afr_nonblocking_inodelk_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
                              int32_t op_ret, int32_t op_errno, dict_t *xdata)
@@ -1563,7 +1563,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
                         }
 
                         piggyback = 0;
-                        local->transaction.eager_lock[i] = 1;
+                        local->transaction.eager_lock[i] = 1;//执行eager-lock前标记，如果加锁失败，则清空该标记
 
 						afr_set_delayed_post_op (frame, this);//Check the option determines whether or not enable eager_lock
 
@@ -1627,7 +1627,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
 out:
         return ret;
 }
-//由于没有在所有的子卷上加锁成功，这里释放在某些子卷上获取的锁。
+//释放子卷上获取的锁。(AFR_TRANSACTION_LK)
 int32_t
 afr_unlock (call_frame_t *frame, xlator_t *this)
 {
