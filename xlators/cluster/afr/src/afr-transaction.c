@@ -1834,7 +1834,7 @@ afr_transaction_resume (call_frame_t *frame, xlator_t *this)
                 afr_remove_eager_lock_stub (local);
         }
 
-        afr_restore_lk_owner (frame);
+        afr_restore_lk_owner (frame);//»¹Ô­lk-owner
 
         afr_handle_symmetric_errors (frame, this);
 
