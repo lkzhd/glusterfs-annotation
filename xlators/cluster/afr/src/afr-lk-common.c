@@ -1096,7 +1096,7 @@ afr_lock_blocking (call_frame_t *frame, xlator_t *this, int cookie)
                 }
         }
 
-        if (int_lock->lk_expected_count == int_lock->lk_attempted_count) {
+        if (int_lock->lk_expected_count == int_lock->lk_attempted_count) {//所有目标子卷都已经加锁了
                 /* we're done locking */
 
                 gf_msg_debug (this->name, 0,
@@ -1109,7 +1109,7 @@ afr_lock_blocking (call_frame_t *frame, xlator_t *this, int cookie)
                 return 0;
         }
 
-        if (!_is_lock_wind_needed (local, child_index)) {
+        if (!_is_lock_wind_needed (local, child_index)) {//该子卷不在线，则直接对下一个子卷加锁
                 afr_lock_blocking (frame, this, cookie + 1);
                 return 0;
         }
