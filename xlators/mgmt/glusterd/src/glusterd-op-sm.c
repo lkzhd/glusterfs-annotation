@@ -175,7 +175,10 @@ glusterd_txn_opinfo_init (glusterd_op_info_t  *opinfo,
 
         return;
 }
-
+/*
+Think about the case a great many of txn have perform promiscuous,
+How do we distinguish them?It's why we need txn_id
+*/
 int32_t
 glusterd_generate_txn_id (dict_t *dict, uuid_t **txn_id)
 {
