@@ -767,7 +767,7 @@ out:
         return 0;
 }
 
-
+//对于继承的preo-op，还原继承的值，即递减继承时增加的值
 gf_boolean_t
 afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 {
@@ -794,7 +794,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 	if (!fd_ctx)
 		return _gf_false;
 
-	if (local->transaction.no_uninherit)
+	if (local->transaction.no_uninherit)//不需要还原继承
 		return _gf_false;
 
 	/* This function must be idempotent. So check if we
@@ -804,7 +804,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 	   the call in afr_changelog_post_op_safe() to not have
 	   side effects on the call from afr_changelog_post_op_now()
 	*/
-	if (local->transaction.uninherit_done)
+	if (local->transaction.uninherit_done)//已经还原过了，直接返回上次执行还原的值
 		return local->transaction.uninherit_value;
 
 	LOCK(&fd->lock);
@@ -817,10 +817,10 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 			}
 		}
 
-		if (fd_ctx->inherited[type]) {
+		if (fd_ctx->inherited[type]) {//递减相应标记
 			ret = _gf_true;
 			fd_ctx->inherited[type]--;
-		} else if (fd_ctx->on_disk[type]) {
+		} else if (fd_ctx->on_disk[type]) {//递减相应标记
 			ret = _gf_false;
 			fd_ctx->on_disk[type]--;
 		} else {
@@ -830,7 +830,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 
 		if (!fd_ctx->inherited[type] && !fd_ctx->on_disk[type]) {
 			for (i = 0; i < priv->child_count; i++)
-				fd_ctx->pre_op_done[type][i] = 0;
+				fd_ctx->pre_op_done[type][i] = 0;//更新pre-op-done，便于以后的继承
 		}
 	}
 unlock:
@@ -887,7 +887,7 @@ afr_changelog_pre_op_inherit (call_frame_t *frame, xlator_t *this)
 			}
 		}
 
-		fd_ctx->inherited[type]++;
+		fd_ctx->inherited[type]++;//可以继承，递增该标记
 
 		ret = _gf_true;
 
@@ -899,7 +899,7 @@ unlock:
 	return ret;
 }
 
-//更新各个子卷上的pre-op状态
+//更新fd中各个子卷上的pre-op状态
 gf_boolean_t
 afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 {
@@ -922,14 +922,14 @@ afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 	if (!fd_ctx)
 		return _gf_false;
 
-	if (local->transaction.inherited)
+	if (local->transaction.inherited)//继承的pre-op，不需要更新
 		/* was already inherited in afr_changelog_pre_op */
 		return _gf_false;
 
 	if (!local->transaction.dirtied)
 		return _gf_false;
 
-        if (!afr_txn_nothing_failed (frame, this))
+        if (!afr_txn_nothing_failed (frame, this))//之前阶段所有操作都正常，不需要更新
 		return _gf_false;
 	//获取相关操作在扩展属性中的索引
 	type = afr_index_for_transaction_type (local->transaction.type);
@@ -938,15 +938,15 @@ afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 
 	LOCK(&fd->lock);
 	{
-		if (!fd_ctx->on_disk[type]) {//还没有执行过pre-op操作，需要使用fd_ctx->on_disk[type]++更新它
+		if (!fd_ctx->on_disk[type]) {//还没有执行过pre-op操作
 			for (i = 0; i < priv->child_count; i++)
 				fd_ctx->pre_op_done[type][i] =
-					local->transaction.pre_op[i];
+					local->transaction.pre_op[i];//这里重新对pre_op_done赋值，是为了保证下一次事务中可以继承它
 		} else {//已经执行过pre-op操作，
 			for (i = 0; i < priv->child_count; i++)
 				if (fd_ctx->pre_op_done[type][i] !=
 				    local->transaction.pre_op[i]) {
-					local->transaction.no_uninherit = 1;
+					local->transaction.no_uninherit = 1;//该标记意味着不再尝试继承pre-op
 					goto unlock;
 				}
 		}
