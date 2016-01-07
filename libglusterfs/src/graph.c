@@ -685,6 +685,10 @@ glusterfs_graph_activate (glusterfs_graph_t *graph, glusterfs_ctx_t *ctx)
 
         /* XXX: attach to master and set active pointer */
         if (ctx->master) {
+			/*	将根据卷配置文件构造的graph与前面准备好的master translator衔接起来，master translator决定了
+				这个客户端的类型，如果master是fuse，则说明这是一个使用fuse挂载的客户端，即集群的native-client。
+				在衔接起来之前，会先向其发送一个事件，GF_EVENT_GRAPH_NEW，让其做好准备。
+			*/
                 ret = xlator_notify (ctx->master, GF_EVENT_GRAPH_NEW, graph);
                 if (ret) {
                         gf_msg ("graph", GF_LOG_ERROR, 0,
@@ -692,11 +696,11 @@ glusterfs_graph_activate (glusterfs_graph_t *graph, glusterfs_ctx_t *ctx)
                                 "graph new notification failed");
                         return ret;
                 }
-                ((xlator_t *)ctx->master)->next = graph->top;
+                ((xlator_t *)ctx->master)->next = graph->top;//衔接
         }
 
         /* XXX: perform parent up */
-        ret = glusterfs_graph_parent_up (graph);
+        ret = glusterfs_graph_parent_up (graph);//向下层的translator逐层发送事件通知，事件为GF_EVENT_PARENT_UP
         if (ret) {
                 gf_msg ("graph", GF_LOG_ERROR, 0, LG_MSG_EVENT_NOTIFY_FAILED,
                         "parent up notification failed");

@@ -207,7 +207,13 @@ unlock:
 	return 0;
 }
 
+/*
+将stub添加到ob_fd的stub链表中。
+我们简单分析一下，fd是上层函数中获取的该inode的第一个打开的非匿名问卷描述符，从该文件
+描述符中能够得到此translator要使用的ob_fd_t结构指针ob_fd。然后将前面创建的stub添加到
+ob_fd->list中。
 
+*/
 int
 open_and_resume (xlator_t *this, fd_t *fd, call_stub_t *stub)
 {
@@ -219,6 +225,8 @@ open_and_resume (xlator_t *this, fd_t *fd, call_stub_t *stub)
 
 	LOCK (&fd->lock);
 	{
+		/*这里的fd是old_fd，一定要谨记这点。
+		*/
 		ob_fd = __ob_fd_ctx_get (this, fd);
 		if (!ob_fd)
 			goto unlock;
@@ -234,11 +242,11 @@ unlock:
 	UNLOCK (&fd->lock);
 
 nofd:
-	if (op_errno)
+	if (op_errno)//成功得到了ob_fd，但是之前的某个操作发生了错误，这时将错误返回给上策translator
 		call_unwind_error (stub, -1, op_errno);
-	else if (ob_fd)
+	else if (ob_fd)//成功得到了ob_fd，并且一切正常，则唤醒一个延迟的open
 		ob_fd_wake (this, fd);
-	else
+	else//没有得到ob_fd，则继续执行，会将刚刚添加的stub取出来，下发执行，也就是open-behind没有生效
 		call_resume (stub);
 
 	return 0;

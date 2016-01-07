@@ -15,6 +15,9 @@
 #include "mem-types.h"
 #include "libglusterfs-messages.h"
 
+/*
+创建要给新的stub
+*/
 static call_stub_t *
 stub_new (call_frame_t *frame,
           char wind,
@@ -697,7 +700,9 @@ out:
         return stub;
 }
 
-
+/*
+构建open的stub函数，这时的fop是上层translator传过来的。
+*/
 call_stub_t *
 fop_open_stub (call_frame_t *frame, fop_open_t fn,
                loc_t *loc, int32_t flags, fd_t *fd, dict_t *xdata)

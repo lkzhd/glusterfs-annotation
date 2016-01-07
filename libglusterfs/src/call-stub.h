@@ -18,9 +18,9 @@
 
 typedef struct {
 	struct list_head list;
-	char wind;
-	call_frame_t *frame;
-	glusterfs_fop_t fop;
+	char wind;//标记是下发还是向上层返回
+	call_frame_t *frame;//记录本stub的发起frame
+	glusterfs_fop_t fop;//本stub的fop
         struct mem_pool *stub_mem_pool; /* pointer to stub mempool in ctx_t */
 
 	union {
