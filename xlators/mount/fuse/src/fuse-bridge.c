@@ -3879,7 +3879,7 @@ fuse_init (xlator_t *this, fuse_in_header_t *finh, void *msg)
                 goto out;
         }
 
-        priv->init_recvd = 1;
+        priv->init_recvd = 1;//设置为1，标记这是在init
 
         if (fini->major != FUSE_KERNEL_VERSION) {
                 gf_log ("glusterfs-fuse", GF_LOG_ERROR,
@@ -4083,7 +4083,10 @@ fuse_first_lookup_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
         return 0;
 }
 
-
+/*
+graph create后，由fuse发起的第一次lookup，其主要作用就是创建根目录(即挂载点)的
+inode
+*/
 int
 fuse_first_lookup (xlator_t *this)
 {
@@ -4691,7 +4694,7 @@ unlock:
         pthread_mutex_unlock (&priv->sync_mutex);
 
         if (need_first_lookup) {
-                fuse_first_lookup (this);
+                fuse_first_lookup (this);//挂载后的第一次执行lookup
         }
 
         if ((old_subvol != NULL) && (new_subvol != NULL)) {
@@ -4827,7 +4830,7 @@ fuse_thread_proc (void *data)
 
                 iov_in[1].iov_base = iobuf->ptr;
 
-                res = readv (priv->fd, iov_in, 2);
+                res = readv (priv->fd, iov_in, 2);//阻塞在此，等待fuse的fd可读
 
                 if (res == -1) {
                         if (errno == ENODEV || errno == EBADF) {
@@ -4861,7 +4864,7 @@ fuse_thread_proc (void *data)
                         break;
                 }
 
-                finh = (fuse_in_header_t *)iov_in[0].iov_base;
+                finh = (fuse_in_header_t *)iov_in[0].iov_base;//将从fuse中都出来的信息，封装为操作相关的句柄
 
                 if (res != finh->len
 #ifdef GF_DARWIN_HOST_OS
@@ -4914,11 +4917,15 @@ fuse_thread_proc (void *data)
                         finh->uid = 0;
 
                 if (finh->opcode >= FUSE_OP_HIGH)
-                        /* turn down MacFUSE specific messages */
+                        /* turn down MacFUSE specific messages 
+                        			如果不支持这种操作，则直接返回不支持
+						*/
                         fuse_enosys (this, finh, msg);
                 else
+					/*
+					调用init时注册的ops中的相关接口，也即是真正的向下层translator逐层下发的接口
+					*/
                         fuse_ops[finh->opcode] (this, finh, msg);
-
                 iobuf_unref (iobuf);
                 continue;
 

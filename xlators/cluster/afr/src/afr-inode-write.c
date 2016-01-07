@@ -314,7 +314,7 @@ unlock:
                 if (local->update_open_fd_count)
                         afr_handle_open_fd_count (frame, this);
 
-                if (!afr_txn_nothing_failed (frame, this)) {
+                if (!afr_txn_nothing_failed (frame, this)) {//如果没有完全成功
                         //Don't unwind until post-op is complete
                         local->transaction.resume (frame, this);
                 } else {
@@ -331,7 +331,7 @@ unlock:
 
                         fop_frame = afr_transaction_detach_fop_frame (frame);
                         afr_writev_copy_outvars (frame, fop_frame);
-                        local->transaction.resume (frame, this);
+                        local->transaction.resume (frame, this);//继续执行事务，调用afr_transaction_resume
                         afr_writev_unwind (fop_frame, this);
                 }
         }
@@ -366,7 +366,7 @@ afr_writev_wind (call_frame_t *frame, xlator_t *this, int subvol)
         local = frame->local;
         priv = this->private;
 
-        if (AFR_IS_ARBITER_BRICK(priv, subvol)) {
+        if (AFR_IS_ARBITER_BRICK(priv, subvol)) {//如果是仲裁子卷
                 afr_arbiter_writev_wind (frame, this, subvol);
                 return 0;
         }

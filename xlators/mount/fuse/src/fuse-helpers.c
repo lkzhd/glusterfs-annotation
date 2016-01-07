@@ -374,18 +374,20 @@ get_call_frame_for_req (fuse_state_t *state)
         return frame;
 }
 
-
+/*
+将fuse中的inode转换成graph中的inode。
+*/
 inode_t *
 fuse_ino_to_inode (uint64_t ino, xlator_t *fuse)
 {
         inode_t  *inode = NULL;
         xlator_t *active_subvol = NULL;
 
-        if (ino == 1) {
+        if (ino == 1) {//说明这是根目录，所以直接把活动卷inode table的root inode返回就是可以了。
                 active_subvol = fuse_active_subvol (fuse);
                 if (active_subvol)
                         inode = active_subvol->itable->root;
-        } else {
+        } else {//强制转换后，直接返回
                 inode = (inode_t *) (unsigned long) ino;
                 inode_ref (inode);
         }

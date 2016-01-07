@@ -1096,7 +1096,7 @@ afr_lock_blocking (call_frame_t *frame, xlator_t *this, int cookie)
                 }
         }
 
-        if (int_lock->lk_expected_count == int_lock->lk_attempted_count) {
+        if (int_lock->lk_expected_count == int_lock->lk_attempted_count) {//所有目标子卷都已经加锁了
                 /* we're done locking */
 
                 gf_msg_debug (this->name, 0,
@@ -1109,7 +1109,7 @@ afr_lock_blocking (call_frame_t *frame, xlator_t *this, int cookie)
                 return 0;
         }
 
-        if (!_is_lock_wind_needed (local, child_index)) {
+        if (!_is_lock_wind_needed (local, child_index)) {//该子卷不在线，则直接对下一个子卷加锁
                 afr_lock_blocking (frame, this, cookie + 1);
                 return 0;
         }
@@ -1403,7 +1403,7 @@ afr_nonblocking_entrylk (call_frame_t *frame, xlator_t *this)
 out:
         return 0;
 }
-
+//在各个子卷上加锁的回调函数
 int32_t
 afr_nonblocking_inodelk_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
                              int32_t op_ret, int32_t op_errno, dict_t *xdata)
@@ -1563,7 +1563,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
                         }
 
                         piggyback = 0;
-                        local->transaction.eager_lock[i] = 1;
+                        local->transaction.eager_lock[i] = 1;//执行eager-lock前标记，如果加锁失败，则清空该标记
 
 						afr_set_delayed_post_op (frame, this);//Check the option determines whether or not enable eager_lock
 
@@ -1627,7 +1627,7 @@ afr_nonblocking_inodelk (call_frame_t *frame, xlator_t *this)
 out:
         return ret;
 }
-//由于没有在所有的子卷上加锁成功，这里释放在某些子卷上获取的锁。
+//释放子卷上获取的锁。(AFR_TRANSACTION_LK)
 int32_t
 afr_unlock (call_frame_t *frame, xlator_t *this)
 {

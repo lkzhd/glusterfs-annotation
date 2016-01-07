@@ -533,7 +533,7 @@ glusterd_mgmt_v3_lock (const char *name, uuid_t uuid, uint32_t *op_errno,
                 ret = -1;
                 goto out;
         }
-		/*判断是否是否支持该种锁类型，目前支持
+		/*判断是否是否支持该种锁类型，目前支持vol,snap,global三种
 		*/
         is_valid = glusterd_mgmt_v3_is_type_valid (type);
         if (is_valid != _gf_true) {

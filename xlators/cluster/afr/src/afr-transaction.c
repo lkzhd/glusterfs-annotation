@@ -58,7 +58,7 @@ __afr_txn_write_fop (call_frame_t *frame, xlator_t *this)
 
         local->call_count = call_count;
 
-        for (i = 0; i < priv->child_count; i++) {
+        for (i = 0; i < priv->child_count; i++) {//在所有执行过pre-op或者已经继承了pre-op的子卷上下发fop
                 if (local->transaction.pre_op[i]) {
 			local->transaction.wind (frame, this, i);
 
@@ -271,11 +271,11 @@ afr_transaction_perform_fop (call_frame_t *frame, xlator_t *this)
          *  Eg: lk-owner of posix-lk and flush should be same,
          *  flush cant clear the  posix-lks without that lk-owner.
          */
-        afr_save_lk_owner (frame);
+        afr_save_lk_owner (frame);//将当前frame->root->lk_owner暂存
         frame->root->lk_owner =
                 local->transaction.main_frame->root->lk_owner;
 
-	if (local->pre_op_compat)
+	if (local->pre_op_compat)//pre-op没有被合并，这里处理对整个冗余组send pre-op的返回结果
 		/* old mode, pre-op was done as afr_changelog_do()
 		   just now, before OP */
 		afr_changelog_pre_op_update (frame, this);
@@ -291,9 +291,9 @@ afr_transaction_perform_fop (call_frame_t *frame, xlator_t *this)
         if (fd)
                 afr_delayed_changelog_wake_up (this, fd);
         if (priv->arbiter_count == 1) {
-                afr_txn_arbitrate_fop (frame, this);
+                afr_txn_arbitrate_fop (frame, this);//是否引入了仲裁机制，如果有则在特定节点上只保存元数据
         } else {
-                local->transaction.fop (frame, this);
+                local->transaction.fop (frame, this);//开始执行__afr_txn_write_fop
         }
 
 	return 0;
@@ -407,7 +407,7 @@ afr_lock_server_count (afr_private_t *priv, afr_transaction_type type)
 
 /* {{{ pending */
 
-
+//继续执行其他的事务
 int
 afr_changelog_post_op_done (call_frame_t *frame, xlator_t *this)
 {
@@ -767,7 +767,7 @@ out:
         return 0;
 }
 
-
+//对于继承的preo-op，还原继承的值，即递减继承时增加的值
 gf_boolean_t
 afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 {
@@ -794,7 +794,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 	if (!fd_ctx)
 		return _gf_false;
 
-	if (local->transaction.no_uninherit)
+	if (local->transaction.no_uninherit)//不需要还原继承
 		return _gf_false;
 
 	/* This function must be idempotent. So check if we
@@ -804,7 +804,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 	   the call in afr_changelog_post_op_safe() to not have
 	   side effects on the call from afr_changelog_post_op_now()
 	*/
-	if (local->transaction.uninherit_done)
+	if (local->transaction.uninherit_done)//已经还原过了，直接返回上次执行还原的值
 		return local->transaction.uninherit_value;
 
 	LOCK(&fd->lock);
@@ -817,10 +817,10 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 			}
 		}
 
-		if (fd_ctx->inherited[type]) {
+		if (fd_ctx->inherited[type]) {//递减相应标记
 			ret = _gf_true;
 			fd_ctx->inherited[type]--;
-		} else if (fd_ctx->on_disk[type]) {
+		} else if (fd_ctx->on_disk[type]) {//递减相应标记
 			ret = _gf_false;
 			fd_ctx->on_disk[type]--;
 		} else {
@@ -830,7 +830,7 @@ afr_changelog_pre_op_uninherit (call_frame_t *frame, xlator_t *this)
 
 		if (!fd_ctx->inherited[type] && !fd_ctx->on_disk[type]) {
 			for (i = 0; i < priv->child_count; i++)
-				fd_ctx->pre_op_done[type][i] = 0;
+				fd_ctx->pre_op_done[type][i] = 0;//更新pre-op-done，便于以后的继承
 		}
 	}
 unlock:
@@ -842,7 +842,7 @@ unlock:
 	return ret;
 }
 
-
+//是否可以继承之前的pre-op
 gf_boolean_t
 afr_changelog_pre_op_inherit (call_frame_t *frame, xlator_t *this)
 {
@@ -880,14 +880,14 @@ afr_changelog_pre_op_inherit (call_frame_t *frame, xlator_t *this)
 
 		for (i = 0; i < priv->child_count; i++) {
 			if (local->transaction.pre_op[i] !=
-			    fd_ctx->pre_op_done[type][i]) {
+			    fd_ctx->pre_op_done[type][i]) {//如果继承pre-op，那么就需要继承所有子卷上的相应pre-op，这里要判断相应子卷是否已经设置过
 				/* either inherit exactly, or don't */
 				ret = _gf_false;
 				goto unlock;
 			}
 		}
 
-		fd_ctx->inherited[type]++;
+		fd_ctx->inherited[type]++;//可以继承，递增该标记
 
 		ret = _gf_true;
 
@@ -899,7 +899,7 @@ unlock:
 	return ret;
 }
 
-//更新各个子卷上的pre-op状态
+//更新fd中各个子卷上的pre-op状态
 gf_boolean_t
 afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 {
@@ -922,14 +922,14 @@ afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 	if (!fd_ctx)
 		return _gf_false;
 
-	if (local->transaction.inherited)
+	if (local->transaction.inherited)//继承的pre-op，不需要更新
 		/* was already inherited in afr_changelog_pre_op */
 		return _gf_false;
 
 	if (!local->transaction.dirtied)
 		return _gf_false;
 
-        if (!afr_txn_nothing_failed (frame, this))
+        if (!afr_txn_nothing_failed (frame, this))//之前阶段所有操作都正常，不需要更新
 		return _gf_false;
 	//获取相关操作在扩展属性中的索引
 	type = afr_index_for_transaction_type (local->transaction.type);
@@ -941,12 +941,12 @@ afr_changelog_pre_op_update (call_frame_t *frame, xlator_t *this)
 		if (!fd_ctx->on_disk[type]) {//还没有执行过pre-op操作
 			for (i = 0; i < priv->child_count; i++)
 				fd_ctx->pre_op_done[type][i] =
-					local->transaction.pre_op[i];
-		} else {
+					local->transaction.pre_op[i];//这里重新对pre_op_done赋值，是为了保证下一次事务中可以继承它
+		} else {//已经执行过pre-op操作，
 			for (i = 0; i < priv->child_count; i++)
 				if (fd_ctx->pre_op_done[type][i] !=
 				    local->transaction.pre_op[i]) {
-					local->transaction.no_uninherit = 1;
+					local->transaction.no_uninherit = 1;//该标记意味着不再尝试继承pre-op
 					goto unlock;
 				}
 		}
@@ -960,7 +960,7 @@ unlock:
 	return ret;
 }
 
-
+//对某个子卷下发pre-op或者post-op的回调函数
 int
 afr_changelog_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
 		   int op_ret, int op_errno, dict_t *xattr, dict_t *xdata)
@@ -991,7 +991,7 @@ afr_changelog_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
         return 0;
 }
 
-
+//单独下发pre-op或者post-op
 int
 afr_changelog_do (call_frame_t *frame, xlator_t *this, dict_t *xattr,
 		  afr_changelog_resume_t changelog_resume)
@@ -1082,7 +1082,7 @@ afr_changelog_do (call_frame_t *frame, xlator_t *this, dict_t *xattr,
 	return 0;
 }
 
-
+//执行pre-op
 int
 afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
 {
@@ -1095,7 +1095,7 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
         afr_internal_lock_t *int_lock = NULL;
         unsigned char       *locked_nodes = NULL;
 		int idx = -1;
-		gf_boolean_t pre_nop = _gf_true;
+		gf_boolean_t pre_nop = _gf_true;//标记是否需要send pre-op
 		dict_t *xdata_req = NULL;
 
         local = frame->local;
@@ -1104,7 +1104,7 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
 
         locked_nodes = afr_locked_nodes_get (local->transaction.type, int_lock);
 
-		for (i = 0; i < priv->child_count; i++) {
+		for (i = 0; i < priv->child_count; i++) {//send pre-op to all locked-subval
 			if (locked_nodes[i]) {
 				local->transaction.pre_op[i] = 1;
 				call_count++;
@@ -1139,7 +1139,7 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
 		if (afr_changelog_pre_op_inherit (frame, this))
 			goto next;
 
-	  	if (call_count < priv->child_count)
+	  	if (call_count < priv->child_count)//没有在所有子卷上加锁成功，需要执行pre-op
 	         pre_nop = _gf_false;
 
 	        /* Set an all-zero pending changelog so that in the cbk, we can get the
@@ -1154,7 +1154,7 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
 		}
 
 		if ((local->transaction.type == AFR_DATA_TRANSACTION ||
-		     !local->optimistic_change_log)) {
+		     !local->optimistic_change_log)) {//1、对于entry和metadata，并且相应选项满足要求，则需要执行pre-op
 
 			local->dirty[idx] = hton32(1);
 
@@ -1172,11 +1172,11 @@ afr_changelog_pre_op (call_frame_t *frame, xlator_t *this)
 		if (pre_nop)
 			goto next;
 
-		if (!local->pre_op_compat) {
+		if (!local->pre_op_compat) {//是否将pre-op与fop合并，需要一起下发则将pre-op相应的xdata拷贝到fop的xdata
 			dict_copy (xdata_req, local->xdata_req);
 			goto next;
 		}
-
+		//单独下发pre-op，所以将fop作为回调函数，用来处理后后续的fop
 		afr_changelog_do (frame, this, xdata_req, afr_transaction_perform_fop);
 
 		if (xdata_req)
@@ -1228,7 +1228,7 @@ afr_post_blocking_inodelk_cbk (call_frame_t *frame, xlator_t *this)
         return 0;
 }
 
-
+//在整个冗余组上加锁的回调函数
 int
 afr_post_nonblocking_inodelk_cbk (call_frame_t *frame, xlator_t *this)
 {
@@ -1382,7 +1382,7 @@ afr_lock_rec (call_frame_t *frame, xlator_t *this)
         case AFR_DATA_TRANSACTION:
         case AFR_METADATA_TRANSACTION:
                 afr_set_transaction_flock (local);
-				//不管最终是否成功，都会调用这个回调函数，它尝试阻塞的方式获取锁
+				//不管最终是否成功，都会调用这个回调函数，如果失败会继续尝试阻塞的方式获取锁
                 int_lock->lock_cbk = afr_post_nonblocking_inodelk_cbk;
 
                 afr_nonblocking_inodelk (frame, this);//尝试加非阻塞锁
@@ -1420,7 +1420,7 @@ afr_lock (call_frame_t *frame, xlator_t *this)
 
 
 /* }}} */
-
+//事务中加锁阶段完成，可以执行下一步的动作了
 int
 afr_internal_lock_finish (call_frame_t *frame, xlator_t *this)
 {
@@ -1736,7 +1736,7 @@ afr_changelog_post_op_safe (call_frame_t *frame, xlator_t *this)
         return 0;
 }
 
-//推迟post-op，意味着满足一些优化条件
+//对delayed post-op的一些操作
 void
 afr_delayed_changelog_post_op (xlator_t *this, call_frame_t *frame, fd_t *fd,
                                call_stub_t *stub)
@@ -1812,7 +1812,7 @@ afr_delayed_changelog_wake_resume (xlator_t *this, fd_t *fd, call_stub_t *stub)
         afr_delayed_changelog_post_op (this, NULL, fd, stub);
 }
 
-
+//唤醒被delay的changelog，如果有的话
 void
 afr_delayed_changelog_wake_up (xlator_t *this, fd_t *fd)
 {
@@ -1834,7 +1834,7 @@ afr_transaction_resume (call_frame_t *frame, xlator_t *this)
                 afr_remove_eager_lock_stub (local);
         }
 
-        afr_restore_lk_owner (frame);
+        afr_restore_lk_owner (frame);//还原lk-owner
 
         afr_handle_symmetric_errors (frame, this);
 
@@ -1846,7 +1846,7 @@ afr_transaction_resume (call_frame_t *frame, xlator_t *this)
         if (__fop_changelog_needed (frame, this)) {
                 afr_changelog_post_op (frame, this);
         } else {
-		afr_changelog_post_op_done (frame, this);
+				afr_changelog_post_op_done (frame, this);
         }
 
         return 0;
@@ -1980,10 +1980,10 @@ afr_transaction (call_frame_t *frame, xlator_t *this, afr_transaction_type type)
                         gf_fop_list[local->op], uuid_utoa (local->inode->gfid));
                 goto out;
         }
-        afr_transaction_eager_lock_init (local, this);
+        afr_transaction_eager_lock_init (local, this);//
 
         if (local->fd && local->transaction.eager_lock_on)
-                afr_set_lk_owner (frame, this, local->fd);
+                afr_set_lk_owner (frame, this, local->fd);//保存lk_owner
         else
                 afr_set_lk_owner (frame, this, frame->root);
 

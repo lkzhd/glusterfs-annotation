@@ -2329,7 +2329,8 @@ ec_heal_done (int ret, call_frame_t *heal, void *opaque)
                 ec_fop_data_release (opaque);
         return 0;
 }
-
+/*从等待修复任务中取出一个，加入到修复队列
+*/
 ec_fop_data_t*
 __ec_dequeue_heals (ec_t *ec)
 {
@@ -2398,7 +2399,9 @@ ec_handle_healers_done (ec_fop_data_t *fop)
                 ec_launch_heal (ec, heal_fop);
 
 }
-
+/*
+修复控制
+*/
 void
 ec_heal_throttle (xlator_t *this, ec_fop_data_t *fop)
 {
@@ -2412,6 +2415,11 @@ ec_heal_throttle (xlator_t *this, ec_fop_data_t *fop)
                         if ((ec->background_heals > 0) &&
                             (ec->heal_wait_qlen + ec->background_heals) >
                                              (ec->heal_waiters + ec->healers)) {
+                               	/*能够执行修复的条件
+                               			1、打开了修复选项
+                               			2、并且等待修复的列表长度与最大等待修复列表之和大于当前正在等待的修复任务数与正在修复的任务数
+                               		那么将该任务添加到等待队列，并且等待队列长度加1。并且取出一个修复任务。
+								*/
                                 list_add_tail(&fop->healer, &ec->heal_waiting);
                                 ec->heal_waiters++;
                                 fop = __ec_dequeue_heals (ec);

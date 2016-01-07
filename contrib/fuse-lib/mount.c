@@ -344,7 +344,7 @@ gf_fuse_mount (const char *mountpoint, char *fsname,
 
         /* start mount agent */
         pid = fork();
-        switch (pid) {
+        switch (pid) {//¸¸½ø³Ì
         case 0:
                 /* hello it's mount agent */
                 if (!mnt_pid) {

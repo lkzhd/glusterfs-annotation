@@ -2317,7 +2317,7 @@ main (int argc, char *argv[])
 
         gf_proc_dump_init();
 
-        ret = create_fuse_mount (ctx);
+        ret = create_fuse_mount (ctx);//判断是否是fuse挂载的客户端
         if (ret)
                 goto out;
 
