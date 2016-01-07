@@ -165,12 +165,12 @@ __afr_inode_write_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
         call_count = afr_frame_return (frame);
 
         if (call_count == 0) {
-		__afr_inode_write_finalize (frame, this);
+				__afr_inode_write_finalize (frame, this);
 
-		if (afr_txn_nothing_failed (frame, this))
-			local->transaction.unwind (frame, this);
+				if (afr_txn_nothing_failed (frame, this))
+						local->transaction.unwind (frame, this);
 
-                local->transaction.resume (frame, this);
+                		local->transaction.resume (frame, this);
         }
 
         return 0;
