@@ -1127,7 +1127,9 @@ ioc_readv (call_frame_t *frame, xlator_t *this, fd_t *fd,
         inode_ctx_get (fd->inode, this, &tmp_ioc_inode);
         ioc_inode = (ioc_inode_t *)(long)tmp_ioc_inode;
         if (!ioc_inode) {
-                /* caching disabled, go ahead with normal readv */
+                /* caching disabled, go ahead with normal readv 
+                		ÕâÀïÓ¦¸ÃÊÇ»º´æ»¹Ã»ÓÐÉú³É°Éå?ÔõÃ´ËµÊÇ½ûÓÃÁËå
+				*/
                 STACK_WIND (frame, ioc_readv_disabled_cbk,
                             FIRST_CHILD (frame->this),
                             FIRST_CHILD (frame->this)->fops->readv, fd, size,
