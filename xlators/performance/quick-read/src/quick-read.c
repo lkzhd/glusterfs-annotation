@@ -369,7 +369,9 @@ qr_content_refresh (xlator_t *this, qr_inode_t *qr_inode, struct iatt *buf)
 	UNLOCK (&table->lock);
 }
 
-
+/*
+检查缓存是否已经超时
+*/
 gf_boolean_t
 __qr_cache_is_fresh (xlator_t *this, qr_inode_t *qr_inode)
 {
@@ -800,7 +802,9 @@ mem_acct_init (xlator_t *this)
         return ret;
 }
 
-
+/*
+检查设置的cache-size是否超出了系统限制。
+*/
 static gf_boolean_t
 check_cache_size_ok (xlator_t *this, int64_t cache_size)
 {
@@ -1009,7 +1013,7 @@ init (xlator_t *this)
         GF_OPTION_INIT ("cache-timeout", conf->cache_timeout, int32, out);
 
         GF_OPTION_INIT ("cache-size", conf->cache_size, size_uint64, out);
-        if (!check_cache_size_ok (this, conf->cache_size)) {
+        if (!check_cache_size_ok (this, conf->cache_size)) {//检查所设置的cache-size的合法性
                 ret = -1;
                 goto out;
         }
