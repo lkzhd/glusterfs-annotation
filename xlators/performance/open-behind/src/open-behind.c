@@ -156,7 +156,7 @@ ob_wake_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
 			ob_fd->op_errno = op_errno;
 		} else {
 			__fd_ctx_del (fd, this, NULL);
-			ob_fd_free (ob_fd);
+			ob_fd_free (ob_fd);//释放open-behind的相关结构占用的内存，所以后续的非open操作就可以直接下发了。
 		}
 	}
 	UNLOCK (&fd->lock);
@@ -209,9 +209,14 @@ unlock:
 
 /*
 将stub添加到ob_fd的stub链表中。
-我们简单分析一下，fd是上层函数中获取的该inode的第一个打开的非匿名问卷描述符，从该文件
+我们简单分析一下，fd是存放延迟打开信息的文件描述符描述符，从该文件
 描述符中能够得到此translator要使用的ob_fd_t结构指针ob_fd。然后将前面创建的stub添加到
 ob_fd->list中。
+
+在该inode第一次被打开时，并不会真正的向下层translator发送open的请求，指示创建ob_fd_t
+结构，然后将指针就存放在上述的fd中，随后的操作会从
+这个指针来取出上次open的一些信息，然后将其真正的下发，在下发的回调函数中，处理本次的
+实际操作
 
 */
 int
