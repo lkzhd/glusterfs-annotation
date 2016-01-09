@@ -569,15 +569,15 @@ wb_enqueue_common (wb_inode_t *wb_inode, call_stub_t *stub, int tempted)
         {
                 list_add_tail (&req->all, &wb_inode->all);
 
-		req->gen = wb_inode->gen;
+				req->gen = wb_inode->gen;
 
                 list_add_tail (&req->todo, &wb_inode->todo);
-		__wb_request_ref (req); /* for wind */
+				__wb_request_ref (req); /* for wind */
 
-		if (req->ordering.tempted) {/* 异步操作 */
-			list_add_tail (&req->lie, &wb_inode->temptation);
-			__wb_request_ref (req); /* for unwind */
-		}
+				if (req->ordering.tempted) {/* 异步操作 */
+					list_add_tail (&req->lie, &wb_inode->temptation);
+					__wb_request_ref (req); /* for unwind */
+				}
         }
         UNLOCK (&wb_inode->lock);
 
@@ -1016,7 +1016,7 @@ __wb_collapse_small_writes (wb_request_t *holder, wb_request_t *req)
                 iov_unload (iobuf->ptr, holder->stub->args.vector,
                             holder->stub->args.count);
                 holder->stub->args.vector[0].iov_base = iobuf->ptr;
-		holder->stub->args.count = 1;
+				holder->stub->args.count = 1;
 
                 iobref_unref (holder->stub->args.iobref);
                 holder->stub->args.iobref = iobref;
@@ -1071,9 +1071,12 @@ __wb_preprocess_winds (wb_inode_t *wb_inode)
 	page_size = wb_inode->this->ctx->page_size;
 	conf = wb_inode->this->private;
 
-        list_for_each_entry_safe (req, tmp, &wb_inode->todo, todo) {
+    list_for_each_entry_safe (req, tmp, &wb_inode->todo, todo) {
+
 		if (!req->ordering.tempted) {/* 同步操作 */
+
 			if (holder) {
+
 				if (wb_requests_conflict (holder, req))
 					/* do not hold on write if a
 					   dependent write is in queue */
@@ -1102,11 +1105,11 @@ __wb_preprocess_winds (wb_inode_t *wb_inode)
 			continue;
 		}
 
-                if (req->fd != holder->fd) {/* 文件描述符不一致，不能合并 */
-                        holder->ordering.go = 1;
-                        holder = req;
-                        continue;
-                }
+        if (req->fd != holder->fd) {/* 文件描述符不一致，不能合并 */
+            holder->ordering.go = 1;
+            holder = req;
+            continue;
+        }
 
 		space_left = page_size - holder->write_size;/* 用于合并的剩余空间 */
 
